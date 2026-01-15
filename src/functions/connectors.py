@@ -2,7 +2,7 @@ import requests
 import json
 import os
 
-secret_token = 'EAAqTQGM8hmcBQYCZABZCJbcKZAr9pybiDOxYbZCuq1gZC7ZBGlL4fxaWaEGbhVAbs464067h46PgutOH9Gq8vJyOZCn4c3AMCpHLzHBUJiIEyi0nqZANa4dNfZCWe8IjrS8jp4eZBEsepfDf0hoGCwqlT4ydFQEWrCjrfGlMszAfhKyKNZCxpXTUej5TUWpAZBZBhaqtB'
+secret_token = ''
 
 API_VERSION = 'v21.0'
 base_url = f"https://graph.facebook.com/{API_VERSION}/"
