@@ -1,7 +1,5 @@
 import requests
 import json
-import os
-from datetime import datetime
 import time
 
 client_id = '2976654519207527' # Meta App > Configuración de la App > Básica > Identificador de la app
