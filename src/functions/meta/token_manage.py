@@ -5,13 +5,13 @@ import time
 client_id = '2976654519207527' # Meta App > Configuración de la App > Básica > Identificador de la app
 client_secret = '5c6d2c23580207a0a3c5db2f93f82b68' # Meta App > Configuración de la App > Básica > Clave secreta de la app
 
-def meta_get_secret_token(scope="meta", key="access_token"):
+def get_secret_token(scope="meta", key="access_token"):
     """
     Obtiene el Access Token del Secret AWS.
     """
     return dbutils.secrets.get(scope=scope, key=key)
 
-def meta_check_token_expiry(secret_token, client_id, client_secret):
+def check_token_expiry(secret_token, client_id, client_secret):
     """
     Verifica cuánto tiempo de uso le queda a un access token de Meta.
     Devuelve días restantes para la expiración.
@@ -42,7 +42,7 @@ def meta_check_token_expiry(secret_token, client_id, client_secret):
         print(f"Error de conexión: {e}")
         return None
 
-def meta_get_long_lived_token(client_id, client_secret, secret_token):
+def get_long_lived_token(client_id, client_secret, secret_token):
     """
     Intercambia un token (corto o largo) por uno nuevo de 60 días.
     Documentación: https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived
@@ -73,7 +73,7 @@ def meta_get_long_lived_token(client_id, client_secret, secret_token):
         print(f"❌ Error de conexión: {e}")
         return None
     
-def meta_save_long_lived_token(access_token, scope="meta", key="access_token"):
+def save_long_lived_token(access_token, scope="meta", key="access_token"):
     """
     Guarda el token en el secret AWS.
     """
@@ -82,18 +82,19 @@ def meta_save_long_lived_token(access_token, scope="meta", key="access_token"):
 if __name__ == "__main__":
 
     # 1. Obtenemos el Access Token del Secret AWS
-    secret_token = meta_get_secret_token(scope="meta", key="access_token")
+    secret_token = ""
+    # secret_token = get_secret_token(scope="meta", key="access_token")
 
     # 2. Verificamos si el Token tiene 8 días o menos para expirar 
-    # if meta_check_token_expiry(secret_token, client_id, client_secret) <= 8:
-    if meta_check_token_expiry(secret_token, client_id, client_secret) <= 60:
+    # if check_token_expiry(secret_token, client_id, client_secret) <= 8:
+    if check_token_expiry(secret_token, client_id, client_secret) <= 60:
 
         # 3. Si tiene 8 días o menos para expirar, generamos un nuevo Access Token
-        access_token = meta_get_long_lived_token(client_id, client_secret, secret_token)
+        access_token = get_long_lived_token(client_id, client_secret, secret_token)
         print(f"Nuevo Access Token: {access_token}")
 
         # 4. Guardamos el 'access_token' en el secret reemplazando el anterior
-        meta_save_long_lived_token(access_token, scope="meta", key="access_token") 
+        # save_long_lived_token(access_token, scope="meta", key="access_token") 
 
     else:
         pass
