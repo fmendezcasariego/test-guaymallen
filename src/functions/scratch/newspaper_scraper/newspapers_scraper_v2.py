@@ -42,8 +42,16 @@ SCRAPER_CONFIG = {
             "https://www.losandes.com.ar/temas/mendoza/2"
         ],
         "Diario UNO": ["https://www.diariouno.com.ar/politica"],
-        "El Sol": ["https://www.elsol.com.ar/mendoza/"],
-        "MDZ": ["https://www.mdzol.com/politica"]
+        "El Sol": [
+            "https://www.elsol.com.ar/mendoza/page/1/", 
+            "https://www.elsol.com.ar/mendoza/page/2/", 
+            "https://www.elsol.com.ar/mendoza/page/3/"
+        ],
+        "MDZ": [
+            "https://www.mdzol.com/politica", 
+            "https://www.mdzol.com/politica/1", 
+            "https://www.mdzol.com/politica/2"
+        ]
     }
 }
 
