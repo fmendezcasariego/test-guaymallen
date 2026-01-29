@@ -41,7 +41,6 @@ class InstagramMetaClient:
         if "access_token" not in url:
             if params is None: params = {}
             params['access_token'] = self.access_token
-
         try:
             response = requests.get(url, params=params)
             self._log_step(path.split('?')[0], params, response, page_num)
@@ -54,13 +53,11 @@ class InstagramMetaClient:
         page_num = 0
         response = self._request(path, params, page_num)
         all_data.append(response)
-        while "paging" in response and "next" in response["paging"]:
+        while response and "paging" in response and "next" in response["paging"]:
             page_num += 1
             response = self._request(response["paging"]["next"], page_num=page_num)
             all_data.append(response)
         return all_data
-
-    # --- MÉTODOS DE EXTRACCIÓN ---
 
     def get_profile_stats(self):
         fields = "id,ig_id,name,username,biography,followers_count,follows_count,media_count,profile_picture_url,website"
@@ -79,18 +76,15 @@ class InstagramMetaClient:
         return self._get_paginated_data(f"{self.ig_id}/media", {"fields": fields})
 
     def get_media_insights(self, item):
-        """CORREGIDO: Ahora recibe el objeto 'item' completo."""
         media_id = item.get('id')
         media_type = item.get('media_type')
         media_product_type = item.get('media_product_type', 'FEED')
-
         if media_product_type in ["REELS", "CLIPS"]:
             metrics = "clips_replays_count,comments,likes,plays,reach,saved,shares,total_interactions"
         elif media_type == "VIDEO":
             metrics = "video_views,reach,saved,total_interactions"
         else:
             metrics = "impressions,reach,saved,engagement"
-            
         return self._request(f"{media_id}/insights", {"metric": metrics})
 
     def get_comments(self, media_id):
@@ -102,13 +96,15 @@ class InstagramMetaClient:
         return self._get_paginated_data(f"{self.ig_id}/tags", {"fields": fields})
 
     def get_active_stories(self):
+        """CORREGIDO: Usa 'navigation' en lugar de exits/taps."""
         fields = "id,caption,media_product_type,media_type,media_url,permalink,timestamp"
         stories_pages = self._get_paginated_data(f"{self.ig_id}/stories", {"fields": fields})
-        for page in stories_pages:
-            if "data" in page:
-                for story in page["data"]:
-                    metrics = "exits,impressions,reach,replies,taps_back,taps_forward"
-                    self._request(f"{story['id']}/insights", {"metric": metrics})
+        # for page in stories_pages:
+        #     if "data" in page:
+        #         for story in page["data"]:
+        #             # Métricas actualizadas según error v21.0
+        #             metrics = "impressions,reach,replies,saved,shares,navigation"
+        #             self._request(f"{story['id']}/insights", {"metric": metrics})
         return stories_pages
 
     def export_logs(self):
