@@ -3,6 +3,7 @@ import pandas as pd
 import json
 from datetime import datetime
 import time
+import re
 
 class InstagramMetaClient:
     def __init__(self, access_token, instagram_account_id):
@@ -13,21 +14,38 @@ class InstagramMetaClient:
         self.logs = []
 
     def _scrub(self, text):
+        """Elimina tokens de acceso de cualquier string."""
         if not text or not isinstance(text, str): return text
         return text.replace(self.access_token, "REDACTED_TOKEN")
 
-    def _log_step(self, endpoint, params, response, page_num):
+    def _clean_endpoint(self, url):
+        """
+        Limpia la URL para dejar solo el ID y el recurso.
+        Ejemplo: 'https://graph.facebook.com/v21.0/12345/media?after=ABC' -> '12345/media'
+        """
+        # 1. Eliminar la base de la URL incluyendo la versión
+        clean_path = re.sub(r'https://graph\.facebook\.com/v\d+\.\d+/', '', url)
+        # 2. Eliminar los parámetros de consulta (query strings como ?access_token=... o ?after=...)
+        clean_path = clean_path.split('?')[0]
+        return clean_path
+
+    def _log_step(self, raw_url, params, response, page_num):
+        """Registra cada interacción con limpieza de endpoint."""
         try:
             res_json = response.json()
             payload = self._scrub(json.dumps(res_json))
         except:
             payload = self._scrub(response.text)
 
+        # Limpiar el nombre del endpoint para el log
+        endpoint_name = self._clean_endpoint(raw_url)
+
+        # Limpiar parámetros para el log
         safe_params = params.copy() if isinstance(params, dict) else {"url": self._scrub(str(params))}
         if 'access_token' in safe_params: safe_params.pop('access_token')
 
         self.logs.append({
-            "endpoint_called": endpoint,
+            "endpoint_called": endpoint_name,
             "parameters_used": json.dumps(safe_params),
             "raw_payload": payload,
             "status_code": response.status_code,
@@ -37,27 +55,37 @@ class InstagramMetaClient:
         })
 
     def _request(self, path, params=None, page_num=0):
+        """Manejador central de peticiones."""
+        # Si path ya es una URL completa (por paginación), la usamos. Si no, construimos.
         url = path if path.startswith("http") else f"{self.base_url}/{path}"
+        
         if "access_token" not in url:
             if params is None: params = {}
             params['access_token'] = self.access_token
+
         try:
             response = requests.get(url, params=params)
-            self._log_step(path.split('?')[0], params, response, page_num)
+            # Pasamos la URL original (con o sin base) para que _log_step la limpie
+            self._log_step(url, params, response, page_num)
             return response.json()
         except Exception as e:
             return {"error": str(e)}
 
     def _get_paginated_data(self, path, params):
+        """Itera sobre todas las páginas de un endpoint."""
         all_data = []
         page_num = 0
         response = self._request(path, params, page_num)
         all_data.append(response)
+
         while response and "paging" in response and "next" in response["paging"]:
             page_num += 1
+            # El campo 'next' es una URL completa
             response = self._request(response["paging"]["next"], page_num=page_num)
             all_data.append(response)
         return all_data
+
+    # --- MÉTODOS DE EXTRACCIÓN ---
 
     def get_profile_stats(self):
         fields = "id,ig_id,name,username,biography,followers_count,follows_count,media_count,profile_picture_url,website"
@@ -77,14 +105,16 @@ class InstagramMetaClient:
 
     def get_media_insights(self, item):
         media_id = item.get('id')
-        media_type = item.get('media_type')
         media_product_type = item.get('media_product_type', 'FEED')
+        media_type = item.get('media_type')
+        
         if media_product_type in ["REELS", "CLIPS"]:
             metrics = "clips_replays_count,comments,likes,plays,reach,saved,shares,total_interactions"
         elif media_type == "VIDEO":
             metrics = "video_views,reach,saved,total_interactions"
         else:
             metrics = "impressions,reach,saved,engagement"
+            
         return self._request(f"{media_id}/insights", {"metric": metrics})
 
     def get_comments(self, media_id):
@@ -96,13 +126,11 @@ class InstagramMetaClient:
         return self._get_paginated_data(f"{self.ig_id}/tags", {"fields": fields})
 
     def get_active_stories(self):
-        """CORREGIDO: Usa 'navigation' en lugar de exits/taps."""
         fields = "id,caption,media_product_type,media_type,media_url,permalink,timestamp"
         stories_pages = self._get_paginated_data(f"{self.ig_id}/stories", {"fields": fields})
         # for page in stories_pages:
         #     if "data" in page:
         #         for story in page["data"]:
-        #             # Métricas actualizadas según error v21.0
         #             metrics = "impressions,reach,replies,saved,shares,navigation"
         #             self._request(f"{story['id']}/insights", {"metric": metrics})
         return stories_pages
